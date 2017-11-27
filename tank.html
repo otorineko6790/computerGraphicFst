@@ -1,0 +1,129 @@
+<html>
+
+<head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r78/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+<style>
+</style>
+</head>
+
+<body> 
+<script>
+var scene, renderer, camera;
+var controls;
+var keyboard = new KeyboardState();
+var theta1 = 0;
+var theta2 = 0;
+var mesh, angle = 0, turn = false;
+init();
+animate();
+
+var turret;
+var turrn;
+
+function buildTank(){
+	var part = buildPart();
+	var tank = new THREE.Object3D();
+	
+  var base = part[0];
+  tank.add(base);
+  base.position.set(-10, 5, 0);
+  
+  turret = part[1];
+  tank.add(turret);
+  turret.position.set(0, 15, 0);
+  turret.rotation.y = Math.PI/2;
+  turret.rotation.y = theta1;
+  
+  turrn = part[2];
+  turret.add(turrn);
+  turrn.rotation.x = Math.PI/2 + theta2;
+  turrn.position.set(10, 0, 0);
+  
+  var cannon = part[3];
+  turrn.add(cannon);
+  cannon.rotation.z = Math.PI/2;
+  cannon.position.set(5, 0, 0);
+  
+  return tank;
+  
+  }
+function buildPart(){
+	var part = [];
+  var material = new THREE.MeshBasicMaterial({
+    wireframe: true
+  });
+  var base = new THREE.Mesh(new THREE.BoxGeometry(40,10,20), material);
+  part.push(base);
+  var turret = new THREE.Mesh( new THREE.CylinderGeometry(10,10,10,30), material);
+  part.push(turret);
+  var turrn = new THREE.Mesh( new THREE.CylinderGeometry(1.5,1.5,10,30), material);
+  part.push(turrn);
+  var cannon = new THREE.Mesh( new THREE.CylinderGeometry(1.5,1.5,10,30), material);
+  part.push(cannon);
+  return part;
+}
+function init() {
+  scene = new THREE.Scene();
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+  document.body.appendChild(renderer.domElement);
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+  camera.position.z = 100;
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+
+  var gridXZ = new THREE.GridHelper(100, 10, 'red', 'white');
+  scene.add(gridXZ);
+  //////////////////////////////////////////////////////////////////
+  var geometry = new THREE.CylinderGeometry(1.5,1.5,10,30);
+  var material = new THREE.MeshBasicMaterial({
+    wireframe: true
+  });  
+  
+  mesh = buildTank();
+  scene.add(mesh);
+  
+}
+
+
+function animate() {
+  controls.update();
+  keyboard.update();
+  if(keyboard.pressed('W')){
+  	mesh.position.x += 1;
+  }else if(keyboard.pressed('S')){
+  	mesh.position.x -= 1;
+  }else if(keyboard.pressed('A')){
+  	angle += 0.01;
+  	mesh.rotation.y = angle;
+  }else if(keyboard.pressed('D')){
+  	angle -= 0.01;
+ 		mesh.rotation.y = angle;
+  }else if(keyboard.pressed('Q')){
+		theta1 += 0.01;
+    turret.rotation.y = theta1;
+  }else if(keyboard.pressed('E')){
+		theta1 -= 0.01;
+    turret.rotation.y = theta1;
+  }else if(keyboard.pressed('R')){
+		if (theta2 < 0.5)theta2 += 0.01;
+    turrn.rotation.y = theta2;
+  }else if(keyboard.pressed('F')){
+ 		if (theta2 > -0.1) theta2 -= 0.01;
+    turrn.rotation.y = theta2;
+  }
+
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+
+</script>
+</body>
+
+</html>
