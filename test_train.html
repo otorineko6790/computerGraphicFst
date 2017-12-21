@@ -1,0 +1,125 @@
+<html>
+
+<head>
+<style>
+#info {
+  top: 5%;
+  position: absolute;
+  color: yellow;
+  text-align: center;
+  width: 100%;
+}
+
+body {
+  overflow: hidden
+}
+</style>
+</head>
+
+<body> 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js">
+
+
+</script>
+<div id='info'>
+  NEW TextureLoader<br>
+  Model is from <a href='https://clara.io/view/4522a7fe-4402-470a-89d4-5ca93ceb3869/webgl'>URL</a>
+</div>
+
+<script>
+var scene, renderer, camera;
+var controls;
+var toytrain;
+var bumpMap;
+var clock = new THREE.Clock();
+var turn = true;
+var angle = 0;
+
+init();
+animate();
+
+function init() {
+  var width = window.innerWidth;
+  var height = window.innerHeight;
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(width, height);
+  renderer.setClearColor(0x888888);
+  document.body.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(45, width / height, 1, 10000);
+  camera.position.y = 48;
+  camera.position.z = 120;
+  camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+  var gridXZ = new THREE.GridHelper(100, 10, 'red', 'white');
+  scene.add(gridXZ);
+
+  var pointLight = new THREE.PointLight(0xffffff);
+  pointLight.position.set(0, 300, 200);
+  scene.add(pointLight);
+
+  var ambientLight = new THREE.AmbientLight(0x111111);
+  scene.add(ambientLight);
+
+  ////////////////////////////////////////////////////////////////////
+
+  texLoader = new THREE.TextureLoader();
+  texLoader.setCrossOrigin('');
+  texLoader.load(
+    'https://jyunming-chen.github.io/tutsplus/images/wood_oak_002_bump.jpg', // bumpmap
+    function(tex) {
+      bumpMap = tex;
+      console.log ('bumpmap loaded ...');
+    }
+    // the other two left NULL
+  );
+
+  var loader = new THREE.ObjectLoader();
+  loader.load('https://jyunming-chen.github.io/tutsplus/models/toy-train.json',
+    function(obj) {
+      obj.scale.set(10, 10, 10);
+      scene.add(obj);
+      toytrain = obj;
+    });
+
+}
+
+function animate() {
+  controls.update();
+  var dt = clock.getDelta();
+  
+  if (bumpMap  && toytrain) {
+        toytrain.traverse(
+        function(mesh) {
+          if (mesh instanceof THREE.Mesh) {
+            mesh.material.bumpMap = bumpMap;
+            mesh.material.bumpScale = 0.2;
+          }
+        });
+  }
+
+  // nothing happens...
+  // because you did not identify what is 'toytrain'...
+  // need to dig into scene.children
+  if (toytrain !== undefined && turn) {
+    toytrain.position.set(50 * Math.cos(angle), 0, -50 * Math.sin(angle));
+    toytrain.rotation.y = angle + Math.PI;
+    angle += dt;
+  }
+
+
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+</script>
+</body>
+
+</html>
