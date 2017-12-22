@@ -1,0 +1,130 @@
+<html>
+
+<head>
+<style>
+#info {
+  top:5%;
+  position: absolute;
+  color: yellow;
+  text-align: center;
+  width: 100%;
+}
+body {
+  overflow: hidden
+}
+</style>
+</head>
+
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r78/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+<div id='info'>
+Model is from <a href='https://clara.io/view/4522a7fe-4402-470a-89d4-5ca93ceb3869/webgl'>URL</a>
+</div>
+
+<script>
+var scene, renderer, camera;
+var controls;
+var toytrain;
+var bumpMap;
+var clock = new THREE.Clock();
+var turn = true;
+
+init();
+animate();
+
+function init()
+{
+	var width = window.innerWidth;
+	var height = window.innerHeight;
+	renderer = new THREE.WebGLRenderer({antialias: true});
+	renderer.setSize (width, height);
+	renderer.setClearColor (0x888888);
+	document.body.appendChild (renderer.domElement);
+	scene = new THREE.Scene();
+
+	camera = new THREE.PerspectiveCamera (45, width/height, 1, 10000);
+	camera.position.y = 0;
+	camera.position.z = 120;
+	camera.lookAt (new THREE.Vector3(0,0,0));
+
+	controls = new THREE.OrbitControls (camera, renderer.domElement);
+
+////////////////////////////Light/////////////////////////////////////
+
+	var ambientLight = new THREE.AmbientLight (0x111111);
+	scene.add(ambientLight);
+
+////////////////////////////////////////////////////////////////////
+   THREE.ImageUtils.crossOrigin = '';  // no space between a pair of single quotes
+
+	bumpMap = THREE.ImageUtils.loadTexture("https://jyunming-chen.github.io/tutsplus/images/wood_oak_002_bump.jpg");
+	var table = new THREE.ObjectLoader();
+  table.load ('https://raw.githubusercontent.com/otorineko6790/computerGraphicFst/ed6bb3f3e1a53aa6dae4b6a52b2ab2d0cefe0556/table.json', 
+  function ( obj ) {
+    obj.scale.set (35,35,35);
+    obj.position.set(10,14,0);
+    scene.add( obj );
+    obj.traverse (
+    	function (mesh) {
+      	if (mesh instanceof THREE.Mesh) {
+        	mesh.material.bumpMap = bumpMap;
+          mesh.material.bumpScale = 0.2;
+        }
+      });
+  });
+  	
+    var chair = new THREE.ObjectLoader();
+  chair.load ('https://raw.githubusercontent.com/otorineko6790/computerGraphicFst/master/chair.json', 
+  function ( obj ) {
+    obj.scale.set (1,1,1);
+    obj.position.set(-5,0,0);
+    obj.rotation.y = Math.PI;
+    scene.add( obj );
+    obj.traverse (
+    	function (mesh) {
+      	if (mesh instanceof THREE.Mesh) {
+        	mesh.material.bumpMap = bumpMap;
+          mesh.material.bumpScale = 0.2;
+        }
+      });
+  });
+  var book = new THREE.ObjectLoader();
+  book.load('https://raw.githubusercontent.com/otorineko6790/computerGraphicFst/master/book.json', function ( obj ) {
+    obj.scale.set (10,10,10);
+    obj.position.set(-5,28.5,0);
+    
+    obj.rotation.z = Math.PI;
+    obj.rotation.x = -Math.PI/2;
+    scene.add( obj );
+    
+  });
+    var lamp = new THREE.ObjectLoader();
+  lamp.load('https://raw.githubusercontent.com/otorineko6790/computerGraphicFst/master/i-love-lamp.json', function ( obj ) {
+    obj.scale.set (0.3,0.3,0.3);
+    obj.position.set(-20,28.5,15);
+    scene.add( obj );
+    
+  }); 
+  var cup = new THREE.ObjectLoader();
+  cup.load('https://raw.githubusercontent.com/otorineko6790/computerGraphicFst/master/cup.json', function ( obj ) {
+    obj.scale.set (3,3,3);
+    obj.position.set(10,31,10);
+
+    scene.add( obj );
+    
+  });
+
+}
+
+function animate()
+{
+  controls.update();
+
+	requestAnimationFrame ( animate ); 
+	renderer.render (scene, camera);
+}
+</script>
+</body>
+
+</html>
