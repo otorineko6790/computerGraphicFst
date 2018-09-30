@@ -1,0 +1,230 @@
+<html>
+
+<head>
+<style>
+#info {
+  top: 5%;
+  position: absolute;
+  color: yellow;
+  text-align: center;
+  width: 100%;
+}
+
+body {
+  overflow: hidden
+}
+</style>
+</head>
+
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js">
+
+
+</script>
+<div id='info'>
+  homework0
+</div>
+<script>
+var scene, renderer, camera;
+var controls;
+var toytrain;
+var bumpMap;
+var clock = new THREE.Clock();
+var turn = true;
+var angle = -Math.PI / 2;
+var train, rail, trainx = 0,
+  trainz;
+
+var loader = new THREE.TextureLoader();
+loader.setCrossOrigin('');
+var setTexture = loader.load("https://raw.githubusercontent.com/otorineko6790/computerGraphicFst/8e522bd285aae9492c6d88e77ae20657367a259f/rails.png");
+
+init();
+animate();
+
+function setRail() {
+  let leftRail = URail();
+  let rightRail = URail();
+  let nlRail = strRail();
+  let nrRail = strRail();
+  let slRail = strRail();
+  let srRail = strRail();
+
+  scene.add(leftRail);
+  leftRail.rotation.z = Math.PI / 2;
+  leftRail.position.set(-80, 0, 0);
+  scene.add(rightRail);
+  rightRail.rotation.z = -Math.PI / 2;
+  rightRail.position.set(75, 0, 0);
+  scene.add(nrRail);
+  nrRail.position.set(0, 1, -35);
+  scene.add(nlRail);
+  nlRail.position.set(-80, 1, -35);
+  scene.add(srRail);
+  srRail.position.set(0, 1, 75);
+  scene.add(slRail);
+  slRail.position.set(-80, 1, 75);
+}
+
+function buildTrain(){
+	let trainObj = new THREE.Object3D();
+  let setTexture = loader.load("https://raw.githubusercontent.com/otorineko6790/computerGraphicFst/master/159127.jpg");
+
+  let material = new THREE.MeshBasicMaterial({map: setTexture});
+
+  let body = new THREE.Mesh(new THREE.BoxGeometry(50, 20, 20), material);
+  trainObj.add(body);
+  body.position.y = 10;
+  
+
+	let chimney = new THREE.Mesh( new THREE.CylinderGeometry( 5, 5, 20, 30 ), material );
+	trainObj.add( chimney );
+  chimney.position.set(10, 30, 0);
+  
+  let head = new THREE.Mesh( new THREE.CylinderGeometry( 9, 9, 40, 30 ), material );
+	trainObj.add( head );
+  head.position.set(0, 25, 0);
+  head.rotation.z = -Math.PI/2;
+  
+  return trainObj;
+
+}
+function URail() {
+	let geometry = new THREE.RingGeometry(75, 35, 30, 8, 0, Math.PI);
+  var mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({color:'#aa8888' }));
+  mesh.rotation.x = Math.PI / 2;
+  return mesh;
+}
+
+function strRail() {
+
+  var geometry = new THREE.Geometry();
+  geometry.vertices.push(
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0, 0, 80),
+    new THREE.Vector3(40, 0, 80),
+    new THREE.Vector3(40, 0, 0)
+  );
+  var face;
+  face = new THREE.Face3(0, 1, 2);
+  geometry.faces.push(face);
+  face = new THREE.Face3(0, 2, 3);
+  geometry.faces.push(face);
+
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(1, 1)]);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
+
+  geometry.computeBoundingSphere();
+  geometry.computeFaceNormals();
+  geometry.computeVertexNormals();
+
+  material = new THREE.MeshLambertMaterial({
+    map: setTexture,
+    side: THREE.DoubleSide
+  });
+
+
+  var mesh = new THREE.Mesh(geometry, material);
+  mesh.rotation.y = Math.PI / 2;
+  return mesh;
+}
+
+function init() {
+  var width = window.innerWidth;
+  var height = window.innerHeight;
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+  renderer.setSize(width, height);
+  renderer.setClearColor(0x888888);
+  document.body.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(45, width / height, 1, 10000);
+  camera.position.y = 300;
+  camera.position.z = 500;
+  camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+  var gridXZ = new THREE.GridHelper(1000, 100, 'red', 'white');
+  scene.add(gridXZ);
+
+  var pointLight = new THREE.PointLight(0xffffff);
+  pointLight.position.set(0, 300, 200);
+  scene.add(pointLight);
+
+  var ambientLight = new THREE.AmbientLight(0xffffff);
+  scene.add(ambientLight);
+
+  ////////////////////////////////////////////////////////////////////
+  /*train = new THREE.Mesh(new THREE.BoxGeometry(40, 20, 20), new THREE.MeshBasicMaterial({
+    map: setTexture
+  }));
+
+  scene.add(train);
+  train.position.set(0, 10, 55);
+  //train.rotation.y = Math.PI/2;
+  
+  */ 
+  
+  train = buildTrain();
+  scene.add(train);
+  
+  setRail();
+}
+
+var Lturn = false,
+  Rturn = false,
+  left = false,
+  right = true;
+
+function animate() {
+  controls.update();
+
+  if (right) {
+    trainx += 1;
+    train.position.x = trainx;
+    if (trainx > 80) {
+      right = false;
+      Rturn = true;
+    }
+  } else if (Rturn) {
+    angle += 0.02;
+    train.position.x = 55 * Math.cos(angle) + trainx - 4;
+    train.position.z = -55 * Math.sin(angle);
+    train.rotation.y = angle + Math.PI / 2;
+    if (angle > 1.6) {
+      trainx = train.position.x;
+      Rturn = false;
+      left = true;
+    }
+  } else if (left) {
+    trainx -= 1;
+    train.position.x = trainx;
+    if (trainx < -80) {
+      left = false;
+    }
+  } else {
+    angle += 0.02;
+    train.position.x = 55 * Math.cos(angle) + trainx - 4;
+    train.position.z = -55 * Math.sin(angle);
+    train.rotation.y = angle + Math.PI / 2;
+    if (angle > 4.7) {
+      angle = -Math.PI / 2;
+      trainx = train.position.x;
+      right = true;
+    }
+  }
+
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+
+</script>
+</body>
+
+</html>
