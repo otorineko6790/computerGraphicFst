@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<div id="info">
+	  <br/>
+	  <button id="third" style="width:20%">第三人稱</button>
+	  <button id="fist" style="width:20%">第一人稱</button>
+	  <button id="godMode" style="width:20%">上帝視角</button>
+	</div>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.min.js"></script>
+	<script src="https://threejs.org/examples/js/controls/OrbitControls.js">
+
+
+	</script>
+	<script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+	<script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+<style>
+	#info {
+	  position: absolute;
+	  top: 0px;
+	  width: 100%;
+	  padding: 10px;
+	  text-align: center;
+	  color: #ffff00
+	}
+
+	body {
+	  overflow: hidden;
+	}
+</style>
+</head>
+
+<body> 
+<script>
+var camera, scene, renderer, mesh, controls;
+var keyboard = new KeyboardState();
+var clock, texture;
+
+var car;
+var pos = new THREE.Vector3();
+var vel = new THREE.Vector3();
+var force = new THREE.Vector3();
+var power, angle;
+var loader = new THREE.TextureLoader();
+loader.setCrossOrigin('');
+
+var fistView = true,
+  thirdView = false,
+  godView = false;
+var camera1, camera3, cameraG;
+
+$("#fist").click(function() {
+  $("#fist").hide();
+  $("#third").toggle(true);
+  fistView = !fistView;
+  thirdView = !thirdView;
+});
+$("#third").hide();
+$("#godMode").hide();
+
+$("#third").click(function() {
+  $("#godMode").toggle(true);
+  $("#third").hide();
+  thirdView = !thirdView;
+  godView = !godView;
+});
+
+$("#godMode").click(function() {
+  $("#fist").toggle(true);
+  $("#godMode").hide();
+  godView = !godView;
+  fistView = !fistView;
+});
+
+function setBush(){
+	var bush = new THREE.Object3D();
+	let loader = new THREE.TextureLoader();
+  loader.crossOrigin = '';
+
+  var texMat = new THREE.MeshBasicMaterial({
+    side: THREE.DoubleSide,
+    map: loader.load('http://i.imgur.com/ltrHUSu.png'),
+    transparent: true
+  });
+  var part1 = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), texMat);
+  var part2 = part1.clone();
+  bush.add(part1);
+  bush.add(part2);
+  part2.rotation.y = Math.PI/2;
+  return bush;
+}
+
+function setRoad() {
+	var geometry = setGeometry(500, 100);
+  let road = loader.load("https://raw.githubusercontent.com/otorineko6790/computerGraphicFst/master/roadTexture.jpg", function(tex) {
+      texture = tex;
+      texture.repeat.set(5, 1);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.minFilter = THREE.LinearFilter;
+      mesh = new THREE.Mesh(geometry,
+        new THREE.MeshBasicMaterial({
+          map: texture,
+          side: THREE.DoubleSide
+        }));
+      scene.add(mesh);
+      mesh.position.set(-250, 1, -50);
+    });
+
+}
+
+function setGeometry(width, height) {
+  let flat = [
+    new THREE.Vector2(0, 0, 0),
+    new THREE.Vector2(width, 0, 0),
+    new THREE.Vector2(width, 0, height),
+    new THREE.Vector2(0, 0, height)
+  ];
+
+  let geometry = new THREE.Geometry();
+  geometry.vertices.push(
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(width, 0, 0),
+    new THREE.Vector3(width, 0, height),
+    new THREE.Vector3(0, 0, height)
+  );
+  let face;
+  face = new THREE.Face3(0, 1, 2);
+  geometry.faces.push(face);
+  face = new THREE.Face3(0, 2, 3);
+  geometry.faces.push(face);
+
+
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 0), new THREE.Vector2(1, 1)]);
+  geometry.faceVertexUvs[0].push([new THREE.Vector2(0, 0), new THREE.Vector2(1, 1), new THREE.Vector2(0, 1)]);
+
+  geometry.computeBoundingSphere();
+  geometry.computeFaceNormals();
+  geometry.computeVertexNormals();
+
+  return geometry;
+}
+
+function setGrass() {
+  var geometry = setGeometry(500, 500);
+
+  let grass = loader.load("https://raw.githubusercontent.com/otorineko6790/computerGraphicFst/master/grass.jpg",
+    function(tex) {
+      texture = tex;
+      texture.repeat.set(10, 10);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.minFilter = THREE.LinearFilter;
+      mesh = new THREE.Mesh(geometry,
+        new THREE.MeshBasicMaterial({
+          map: texture,
+          side: THREE.DoubleSide
+        }));
+      scene.add(mesh);
+      mesh.position.set(-250, 0, -250);
+    });
+}
+
+(function() {
+  Math.clamp = function(val, min, max) {
+    return Math.min(Math.max(val, min), max);
+  }
+})();
+
+init();
+animate();
+
+function buildVehicle() {
+  var car = new THREE.Object3D();
+  var mat = new THREE.MeshNormalMaterial();
+  var body = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 2, 20), mat);
+  car.add(body);
+  var pointer = new THREE.Mesh(new THREE.BoxGeometry(10, 2, 2), mat);
+  car.add(pointer);
+  pointer.position.x = 5;
+  return car;
+}
+
+function init() {
+
+  clock = new THREE.Clock();
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+  camera.position.set(0, 100, 100);
+  scene.add(camera);
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+  controls.enableKeys = false;
+
+  document.body.appendChild(renderer.domElement);
+ 
+  camera1 = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+  camera1.position.set(0, 100, 100);
+  camera3 = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+  cameraG = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+ 
+  power = 1.0;
+  angle = 0.0;
+  setGrass();
+  setRoad();
+  car = buildVehicle();
+  scene.add(car);
+  var bushes=[];
+  for(let i = 0; i < 15; i++){
+  	let bush = setBush();
+    bushes.push(bush);
+    bush.position.set(-250+Math.random()*500, 5, -50+Math.random()*-200);
+    scene.add(bush);
+  }
+}
+var vehicle;
+
+function update(dt) {
+
+  keyboard.update();
+
+  if (vel.length() > 0) {
+    angle = Math.atan2(-vel.z, vel.x);
+  }
+
+  if (keyboard.pressed("space"))
+    power = 0.1;
+  if (keyboard.pressed("up"))
+    power *= 1.2;
+  if (keyboard.pressed("down"))
+    power /= 1.2;
+
+  power = Math.clamp(power, 0, 80.0);
+
+
+  var angle_thrust = angle;
+  if (keyboard.pressed("left")) {
+    angle_thrust += 0.3;
+  }
+  if (keyboard.pressed("right")) {
+    angle_thrust -= 0.3;
+  }
+
+  var thrust = new THREE.Vector3(1, 0, 0).multiplyScalar(power).applyAxisAngle(new THREE.Vector3(0, 1, 0), angle_thrust);
+  force.copy(thrust);
+  force.add(vel.clone().multiplyScalar(-2))
+  vel.add(force.clone().multiplyScalar(dt));
+  pos.add(vel.clone().multiplyScalar(dt));
+}
+
+function animate() {
+  var dt = clock.getDelta();
+  update(dt);
+  
+  car.position.copy(pos);
+  car.rotation.y = angle;
+  car.position.y = 1;
+
+  camera1.position.copy(car.localToWorld(new THREE.Vector3(30, 30, 0)));
+  camera1.lookAt(car.localToWorld(new THREE.Vector3(100, 0, 0)));
+
+  camera3.position.copy(car.localToWorld(new THREE.Vector3(-70, 60, 0)));
+  camera3.lookAt(car.position);
+
+  cameraG.position.copy(car.localToWorld(new THREE.Vector3(0, 300, 0)));
+  cameraG.lookAt(car.position);
+	
+  if (fistView) {
+    camera = camera1
+  } else if (thirdView) {
+    camera = camera3;
+  } else {
+    camera = cameraG;
+  }
+
+  requestAnimationFrame(animate);
+  render();
+}
+
+function render() {
+  renderer.render(scene, camera);
+}
+
+</script>
+</body>
+
+</html>
