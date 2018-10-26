@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <title>three.js testbed</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="googlebot" content="noindex, nofollow">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+  <script
+    type="text/javascript"
+    src="/js/lib/dummy.js"
+    
+  ></script>
+    <link rel="stylesheet" type="text/css" href="/css/normalize.css">
+
+    <link rel="stylesheet" type="text/css" href="/css/result-light.css">
+
+  <style type="text/css">
+    #info {
+  position: absolute;
+  top: 0px;
+  width: 100%;
+  padding: 10px;
+  text-align: center;
+  color: #ffff00
+}
+
+body {
+  overflow: hidden;
+}
+
+  </style>
+  <!-- TODO: Missing CoffeeScript 2 -->
+
+  <script type="text/javascript">
+
+
+    window.onload=function(){
+      
+class Ball {
+  constructor(mesh, rad, color) {
+
+    this.pos = new THREE.Vector3()
+    this.vel = new THREE.Vector3()
+    this.force = new THREE.Vector3()
+    this.mesh = mesh;
+    this.radius = rad;
+    this.light = new THREE.PointLight(color, 1, 50);
+    scene.add(this.light)
+    scene.add(this.mesh) // add to scene when particle is created
+
+    this.mesh.material.color.copy(color);
+  }
+  update(dt) {
+    this.vel.add(this.force.clone().multiplyScalar(dt))
+    this.pos.add(this.vel.clone().multiplyScalar(dt))
+
+    this.collidingPlanes(planes)
+    this.collidingballs(balls)
+
+    // simple collision
+    /*
+    if (this.pos.z > 100 - this.radius) {
+      	const CR = 0.9
+      	this.pos.z = 100 - this.radius
+        this.vel.z = - CR * this.vel.z;
+      }
+    */
+    this.mesh.position.copy(this.pos)
+    this.light.position.copy(this.pos)
+    this.light.position.y += 20
+  }
+
+  collidingPlanes(planes) {
+    const EPS = 1e-3
+    const CR = 0.96
+    for (let i = 0; i < planes.length; i++) {
+      let plane = planes[i]
+      let point = this.pos.clone().sub(plane.ptOnPl)
+      if (point.dot(plane.normal) < EPS + this.radius) {
+        // position correction
+        this.pos.copy(plane.ptOnPl.clone().add(point.projectOnPlane(plane.normal)))
+        this.pos.add(plane.normal.clone().multiplyScalar(this.radius))
+        // velocity update
+        this.vel.sub(plane.normal.clone().multiplyScalar((1 + CR) * this.vel.dot(plane.normal)))
+        //return;  // assume particle collides with AT MOST one plane
+      }
+    }
+  }
+  collidingballs(balls) {
+    for (let i = 0; i < balls.length; i++) {
+      let ball = balls[i];
+      let dis = this.pos.clone().distanceTo(ball.pos);
+      let rad = this.radius + ball.radius;
+
+      if (rad > dis) {
+        //console.log("hello");
+        let u1 = this.vel.clone();
+        let u2 = ball.vel.clone();
+        //console.log(u1);
+        this.vel=u2;
+        ball.vel=u1;
+      }
+
+    }
+  }
+
+}
+
+class Plane {
+  constructor(localPointOnPlane, localNormal, mesh) {
+    this.localPtOnPl = localPointOnPlane.clone();
+    this.localNormal = localNormal.clone();
+    this.mesh = mesh; // the graphics representation
+    scene.add(mesh)
+  }
+  update() {
+    this.mesh.updateMatrixWorld() // important!
+    this.ptOnPl = this.mesh.localToWorld(this.localPtOnPl.clone());
+    let normalMat = new THREE.Matrix3().getNormalMatrix(this.mesh.matrixWorld);
+    this.normal = this.localNormal.clone().applyMatrix3(normalMat).normalize()
+  }
+}
+
+function buildWall() {
+  let plane, wall
+  wall = new THREE.Mesh(new THREE.BoxGeometry(220, 10, 10), new THREE.MeshPhongMaterial())
+  scene.add(wall)
+  wall.position.z = 105
+  plane = new Plane(new THREE.Vector3(0, 0, -5), new THREE.Vector3(0, 0, -1), wall)
+  plane.update()
+  planes.push(plane)
+
+  wall = new THREE.Mesh(new THREE.BoxGeometry(220, 10, 10), new THREE.MeshPhongMaterial())
+  scene.add(wall)
+  wall.position.z = -105
+  plane = new Plane(new THREE.Vector3(0, 0, 5), new THREE.Vector3(0, 0, 1), wall.clone())
+  plane.update()
+  planes.push(plane)
+
+  wall = new THREE.Mesh(new THREE.BoxGeometry(220, 10, 10), new THREE.MeshPhongMaterial())
+  scene.add(wall)
+  wall.position.x = 105
+  wall.rotation.y = -Math.PI / 2;
+  plane = new Plane(new THREE.Vector3(0, 0, 5), new THREE.Vector3(0, 0, 1), wall.clone())
+  plane.update()
+  planes.push(plane)
+
+  wall = new THREE.Mesh(new THREE.BoxGeometry(220, 10, 10), new THREE.MeshPhongMaterial())
+  scene.add(wall)
+  wall.position.x = -105
+  wall.rotation.y = Math.PI / 2;
+  plane = new Plane(new THREE.Vector3(0, 0, 5), new THREE.Vector3(0, 0, 1), wall.clone())
+  plane.update()
+  planes.push(plane)
+}
+///////////////////////////////////////////////////////////////////////
+var camera, scene, renderer, light;
+var ball
+var planes = []
+var balls = []
+
+init();
+animate();
+
+function init() {
+  scene = new THREE.Scene();
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+  camera.position.y = 200;
+  camera.position.z = 300;
+
+  light = new THREE.PointLight(0xffffff);
+  light.position.set(100, 400, 200);
+  scene.add(light);
+
+  var gridXZ = new THREE.GridHelper(200, 20, 'red', 'white');
+  //scene.add(gridXZ);
+  var floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshPhongMaterial({
+    color: 0x666666
+  }))
+  floor.rotation.x = -Math.PI / 2
+  scene.add(floor)
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0xcccccc);
+
+  let controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+  document.body.appendChild(renderer.domElement);
+  ///////////////////////////////////////////////////////////
+  buildWall();
+  let disk, ball;
+  let pos = [
+  new THREE.Vector3(0, 3, 0), 
+  new THREE.Vector3(-20, 3, 0),
+  new THREE.Vector3(25, 3, 10),
+  new THREE.Vector3(-25, 3, 20),
+  new THREE.Vector3(-25, 3, -20)
+  ],
+  
+  vel = [
+  new THREE.Vector3(0, 0, 15), 
+  new THREE.Vector3(0, 0, -15),
+  new THREE.Vector3(10, 0, -15),
+  new THREE.Vector3(-15, 0, 5),
+  new THREE.Vector3(15, 0, 20)
+  ],
+  
+  colors = [
+  new THREE.Color(0x00ffff),
+  new THREE.Color(0xff00ff),
+  new THREE.Color(0x5500ff),
+  new THREE.Color(0x00a0ff),
+  new THREE.Color(0xa0a0ff)
+  ];
+  
+  for(let i = 0; i < 5; i++){
+  	disk = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, 6, 32), new THREE.MeshBasicMaterial())
+
+  ball = new Ball(disk, 10, colors[i])
+  ball.vel=vel[i]
+  ball.pos=pos[i]
+  balls.push(ball)
+  }
+  
+  /*
+  disk = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, 6, 32), new THREE.MeshBasicMaterial())
+
+  ball = new Ball(disk, 10, colors[0])
+  ball.vel = vel[0]
+  ball.pos.set(0, 3, 0)
+  balls.push(ball)
+
+  disk = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, 6, 32), new THREE.MeshBasicMaterial())
+  ball = new Ball(disk, 10, new THREE.Color(0xff00ff))
+  ball.vel.set(0, 0, -15)
+  ball.pos.set(20, 3, 0)
+  balls.push(ball)
+  
+  disk = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, 6, 32), new THREE.MeshBasicMaterial())
+  ball = new Ball(disk, 10, new THREE.Color(0x5500ff))
+  ball.vel.set(10, 0, -15)
+  ball.pos.set(-25, 3, 0)
+  balls.push(ball)
+  */
+}
+
+function animate() {
+
+  balls.forEach(function(b) {
+    b.update(0.1)
+  })
+  //	ball.update (0.1)
+  requestAnimationFrame(animate);
+  render();
+}
+
+function render() {
+  renderer.render(scene, camera);
+}
+
+
+    }
+
+</script>
+
+</head>
+<body>
+  <div id="info">hw2 Air Hochey
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.min.js"></script>
+<script src="https://threejs.org/examples/js/controls/OrbitControls.js">
+
+
+</script>
+<script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+
+  
+  <script>
+    // tell the embed parent frame the height of the content
+    if (window.parent && window.parent.parent){
+      window.parent.parent.postMessage(["resultsFrame", {
+        height: document.body.getBoundingClientRect().height,
+        slug: ""
+      }], "*")
+    }
+  </script>
+</body>
+</html>
