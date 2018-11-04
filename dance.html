@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+	<div id="info"><br><br>gjs_hw3<br> Keyframe Interpolation<br>
+	</div>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/84/three.min.js"></script>
+	<script src="https://threejs.org/examples/js/controls/OrbitControls.js">
+
+	</script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5/dat.gui.min.js"></script>
+
+	<audio id="soundtrack" autoplay loop style="display:none">
+
+	<source src="https://raw.githubusercontent.com/otorineko6790/computerGraphicFst/master/bensound-funnysong.mp3" type='audio/mp3'>
+	</audio>
+	
+	<body>
+		<script>
+			var camera, scene, renderer, gcontrol;
+			var clock = new THREE.Clock();
+			var period = 2; // 3 seconds
+
+			var pose1 = {
+			  LShoulder: 0.5,
+			  LElbow: -1,
+			  RShoulder: 0,
+			  RElbow: 0
+			};
+			var pose2 = {
+			  LShoulder: 0,
+			  LElbow: 0,
+			  RShoulder: 0.5,
+			  RElbow: -1
+			};
+			var Ppose2 = {
+			  LShoulder: 0.9,
+			  LElbow: 1.21,
+			  RShoulder: 0.9,
+			  RElbow: 1.21
+			};
+			var Ppose2p = {
+			  LShoulder: 0.9 - 0.05,
+			  LElbow: 1.21 - 0.05,
+			  RShoulder: 0.9 - 0.05,
+			  RElbow: 1.21 - 0.05
+			};
+			var Ppose1 = {
+			  LShoulder: 0.23,
+			  LElbow: 0.3,
+			  RShoulder: 0.23,
+			  RElbow: 0.3
+			};
+			var Ppose1p = {
+			  LShoulder: 0.23 + 0.05,
+			  LElbow: 0.30 + 0.05,
+			  RShoulder: 0.23 + 0.05,
+			  RElbow: 0.30 + 0.05
+			};
+			var floss1 = {
+			  LShoulder: 0.5,
+			  LElbow: 0,
+			  RShoulder: -1.45,
+			  RElbow: -1.45
+			};
+			var floss2 = {
+			  LShoulder: -1.45,
+			  LElbow: -1.45,
+			  RShoulder: 0.5,
+			  RElbow: 0
+			};
+
+
+
+			// "normal" keys
+			var Nkeys = [{
+			  s: 0,
+			  pose: pose1
+			}, {
+			  s: 0.5,
+			  pose: pose2
+			}, {
+			  s: 1,
+			  pose: pose1
+			}];
+			// "popping" keys: https://www.youtube.com/watch?v=YhYsTszCMkM
+			var Pkeys = [{
+				s: 0,
+				pose: Ppose1
+			  }, {
+				s: 0.40,
+				pose: Ppose2p
+			  },
+			  {
+				s: 0.48,
+				pose: Ppose2p
+			  }, {
+				s: 0.5,
+				pose: Ppose2
+			  },
+			  {
+				s: 0.90,
+				pose: Ppose1p
+			  }, {
+				s: 0.98,
+				pose: Ppose1p
+			  },
+			  {
+				s: 1,
+				pose: Ppose1
+			  }
+			];
+
+			var Fkeys = [{
+				s: 0,
+				pose: floss1,
+				armL: 0,
+				armR: 0.3,
+				body: -0.1
+			  },
+			  {
+				s: 0.15,
+				pose: floss2,
+				armL: -0.3,
+				armR: 0,
+				body: 0.1
+			  },
+			  {
+				s: 0.3,
+				pose: floss1,
+				armL: 0,
+				armR: -0.3,
+				body: -0.1
+			  },
+			  {
+				s: 0.5,
+				pose: floss2,
+				armL: 0.3,
+				armR: 0,
+				body: 0.1
+			  },
+			  {
+				s: 0.7,
+				pose: floss1,
+				armL: 0,
+				armR: -0.3,
+				body: -0.1
+			  },
+			  {
+				s: 0.85,
+				pose: floss2,
+				armL: -0.3,
+				armR: 0,
+				body: 0.1
+			  },
+			  {
+				s: 1,
+				pose: floss1,
+				armL: 0,
+				armR: 0.3,
+				body: -0.1
+			  }
+			];
+
+
+			var keys = Nkeys;
+
+			init();
+			animate();
+
+			function makeLink() {
+			  var oneLink = new THREE.Object3D();
+			  var mesh = new THREE.Mesh(new THREE.BoxGeometry(15, 5, 5), new THREE.MeshBasicMaterial({
+				wireframe: true
+			  }));
+			  oneLink.add(mesh);
+			  mesh.position.set(7.5, 0, 0);
+			  joint = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 3, 12),
+				new THREE.MeshBasicMaterial({
+				  wireframe: true
+				}));
+			  joint.rotation.x = Math.PI / 2;
+			  oneLink.add(joint);
+			  return oneLink;
+			}
+
+			function frame(i, t, s) {
+			  // linearly interpolate between i & i+1  
+			  let tt = (s - keys[i].s) / (keys[i + 1].s - keys[i].s);
+			  let LShoulder = (1 - tt) * keys[i].pose.LShoulder + tt * keys[i + 1].pose.LShoulder;
+			  let LElbow = (1 - tt) * keys[i].pose.LElbow + tt * keys[i + 1].pose.LElbow;
+			  let RShoulder = (1 - tt) * keys[i].pose.RShoulder + tt * keys[i + 1].pose.RShoulder;
+			  let RElbow = (1 - tt) * keys[i].pose.RElbow + tt * keys[i + 1].pose.RElbow;
+
+			  linkL1.rotation.z = LShoulder;
+			  linkL2.rotation.z = LElbow;
+			  linkR1.rotation.z = RShoulder;
+			  linkR2.rotation.z = RElbow;
+			  if (gcontrol.type == 'floss') {
+				linkL1.rotation.x = (1 - tt) * keys[i].armL + tt * keys[i + 1].armL;
+				linkR1.rotation.x = (1 - tt) * keys[i].armR + tt * keys[i + 1].armR;
+				body.rotation.z = (1 - tt) * keys[i].body + tt * keys[i + 1].body;
+			  }
+			}
+
+			function init() {
+			  scene = new THREE.Scene();
+
+			  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+			  camera.position.z = 100;
+			  scene.add(camera);
+
+			  var gridXZ = new THREE.GridHelper(50, 10);
+			  gridXZ.setColors(new THREE.Color(0xff00ff), new THREE.Color(0xffffff));
+			  //scene.add(gridXZ);
+
+			  renderer = new THREE.WebGLRenderer();
+			  renderer.setSize(window.innerWidth, window.innerHeight);
+			  renderer.setClearColor(0x888888);
+
+			  let controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+			  document.body.appendChild(renderer.domElement);
+			  window.addEventListener('resize', onWindowResize, false);
+			  ////////////////////////////////////////////////////////////////
+			  body = new THREE.Object3D();
+			  var torso = new THREE.Mesh(new THREE.BoxGeometry(20, 30, 8),
+				new THREE.MeshBasicMaterial({
+				  wireframe: true
+				}));
+			  body.add(torso);
+			  torso.position.y = -10;
+			  var head = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 10, 20),
+				new THREE.MeshBasicMaterial({
+				  wireframe: true
+				}));
+			  body.add(head);
+			  head.position.y = 10;
+			  scene.add(body);
+			  ///////////////////////////////////////////////////////////////
+			  gcontrol = {
+				//music: false,
+				period: 2,
+				type: "floss",
+				LShoulder: 0.1,
+				LElbow: 0.1,
+				RShoulder: 0.1,
+				RElbow: 0.1,
+				thetala: 0.1,
+				thetara: 0.1,
+				body: 0.1
+			  };
+
+			  var gui = new dat.GUI();
+			  gui.domElement.id = 'gui';
+			  //gui.add(gcontrol, 'music', false);
+			  gui.add(gcontrol, 'period', 0.5, 5.5);
+			  gui.add(gcontrol, 'LShoulder', -3, 3);
+			  gui.add(gcontrol, 'LElbow', -3, 3);
+			  gui.add(gcontrol, 'RShoulder', -3, 3);
+			  gui.add(gcontrol, 'RElbow', -3, 3);
+			  gui.add(gcontrol, 'thetala', -3, 3);
+			  gui.add(gcontrol, 'thetara', -3, 3);
+			  gui.add(gcontrol, 'body', -3, 3);
+			  gui.add(gcontrol, 'type', ["regular", "pop", "floss", "test"]);
+
+			  /////////////////////////////////////
+			  var oneLink = makeLink();
+			  linkL1 = oneLink.clone();
+			  linkL2 = oneLink.clone();
+			  var leftArm = new THREE.Object3D();
+			  leftArm.add(linkL1);
+			  linkL1.position.x = 10;
+			  body.add(leftArm);
+			  linkL1.add(linkL2);
+			  linkL2.position.set(15, 0, 0);
+
+			  linkR1 = oneLink.clone();
+			  linkR2 = oneLink.clone();
+			  var rightArm = new THREE.Object3D();
+			  rightArm.add(linkR1);
+			  linkR1.position.x = -10;
+			  linkR1.rotation.y = Math.PI;
+			  body.add(rightArm);
+			  linkR1.add(linkR2);
+			  linkR2.position.set(15, 0, 0);
+
+			} //init()
+			var body;
+
+			function animate() {
+			  //keys = Pkeys;  
+			  let t = clock.getElapsedTime() % gcontrol.period;
+			  let s = t / gcontrol.period; // normalized time
+
+			  for (var i = 1; i < keys.length; i++) {
+				if (keys[i].s > s)
+				  break;
+			  }
+			  // take previous one
+			  i = i - 1;
+			  if (gcontrol.type == 'test') {
+				linkL1.rotation.z = gcontrol.LShoulder;
+				linkL2.rotation.z = gcontrol.LElbow;
+				linkR1.rotation.z = gcontrol.RShoulder;
+				linkR2.rotation.z = gcontrol.RElbow;
+				linkL1.rotation.x = gcontrol.thetala;
+				linkR1.rotation.x = gcontrol.thetara;
+				body.rotation.z = gcontrol.body;
+			  } else {
+				switch (gcontrol.type) {
+				  case 'regular':
+					keys = Nkeys;
+					break;
+				  case 'pop':
+					keys = Pkeys;
+					break;
+				  case 'floss':
+					keys = Fkeys;
+					break;
+				}
+				frame(i, t, s);
+			  }
+
+			  requestAnimationFrame(animate);
+			  renderer.render(scene, camera);
+			}
+
+			function onWindowResize() {
+			  camera.aspect = window.innerWidth / window.innerHeight;
+			  camera.updateProjectionMatrix();
+			  renderer.setSize(window.innerWidth, window.innerHeight);
+			}
+		</script>
+	</body>
+	<style>
+		#info {
+		  position: absolute;
+		  top: 0px;
+		  width: 100%;
+		  padding: 10px;
+		  text-align: center;
+		  color: #ffff00
+		}
+
+		body {
+		  overflow: hidden;
+		}
+
+		#gui {
+		  position: absolute;
+		  top: 1px;
+		  left: 1px;
+		  height: 350px;
+		}	
+	</style>
+</html>
